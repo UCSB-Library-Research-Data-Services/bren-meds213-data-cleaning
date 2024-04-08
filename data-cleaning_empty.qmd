@@ -37,12 +37,17 @@ glimpse(snowsurvey_csv)
 Ok, the types are not what we were expecting for the percentages of cover. Let's find out why:
 
 ```{r}
-
+snowsurvey_csv %>% 
+  count(Snow_cover)
 ```
 
 Let's focus on the non-numeric values as a starting point:
 
 ```{r}
+snowsurvey_csv %>% 
+  count(Snow_cover) %>% 
+  # Count values in the dataframe that are NA by making the column numeric
+  filter(is.na(as.numeric(Snow_cover)))
 
 ```
 
@@ -51,13 +56,18 @@ Let's focus on the non-numeric values as a starting point:
 Ok, we found our problematic values that are not numeric. There are a non-negligible number of cells with a dot as value. There is no mention of using this symbol in the metadata. We should probably have a look at those rows:
 
 ```{r}
+snowsurvey_csv %>% 
+  filter(Snow_cover == ".") %>% 
+  view()
 
 ```
 
 Interestingly, when there is a "dot" for snow cover, it is also the case for all the other covers. Let's replace them all with NA since there is no supplemental information in the provided metadata
 
 ```{r}
-
+snowsurvey_fixed <- snowsurvey_csv %>% 
+  #filter(Snow_cover == ".") %>% 
+  mutate(Snow_cover = ifelse(Snow_cover == ".",NA, Snow_cover))
 ```
 
 We will now tackle the other problematic values:
@@ -65,55 +75,79 @@ We will now tackle the other problematic values:
 The problem is similar with "-", let's set it to NA
 
 ```{r}
+snowsurvey_fixed %>% 
+  filter(Snow_cover == "-")
 
+snowsurvey_fixed <- snowsurvey_fixed %>% 
+  mutate(Snow_cover = ifelse(Snow_cover == "-", NA, Snow_cover))
 ```
 
 "n/a" is pretty clear regarding how to fix it:
 
 ```{r}
 
+snowsurvey_fixed <- snowsurvey_fixed %>% 
+  mutate(Snow_cover = ifelse(Snow_cover == "n/a", NA, Snow_cover))
+
 ```
 
 "unk" is probably an abbreviation for unknown:
 
 ```{r}
-
+snowsurvey_fixed <- snowsurvey_fixed %>% 
+  mutate(Snow_cover = ifelse(Snow_cover == "unk", NA, Snow_cover))
 ```
 
 Finally we will set "<1" as zero (quite arbitrary indeed):
 
 ```{r}
 
+snowsurvey_fixed <- snowsurvey_fixed %>% 
+  mutate(Snow_cover = ifelse(Snow_cover == "<1", "0", Snow_cover))
 ```
 
 Now we can test if we now only have NAs as non numeric values in the column:
 
 ```{r}
-
+snowsurvey_fixed %>%  
+  count(Snow_cover) %>% 
+  filter(is.na(as.numeric(Snow_cover)))
 ```
 
 Ok, we can do the transformation:
 
 ```{r}
 
+snowsurvey_fixed <- snowsurvey_fixed %>% 
+  mutate(Snow_cover = as.numeric(Snow_cover))
+
+
+glimpse(snowsurvey_fixed)
 ```
 
 Yeah we have finally a numeric column 🎉. Now we can verify that all the values are between 0 and 100:
 
 ```{r}
  
+snowsurvey_fixed %>% 
+  filter(Snow_cover > 100)
+
 ```
 
 We have two values above 100, with an interesting 470%! ☃️ We should probably set those values to NAs:
 
 ```{r}
 
+snowsurvey_fixed <- snowsurvey_fixed %>% 
+  mutate(Snow_cover = ifelse(Snow_cover > 100,NA, Snow_cover))
+
 ```
 
 Let's check for negative values:
 
 ```{r}
-
+snowsurvey_fixed <- snowsurvey_fixed %>% 
+  mutate(Snow_cover = ifelse(Snow_cover < 0, NA, Snow_cover))
 ```
 
 No negative value detected ✅
