@@ -168,7 +168,9 @@ write_csv(snowsurvey_fixed, file.path(datadir_processed, "snow_cover.csv"))
 Import the species csv files with the bird species information:
 
 ```{r}
+species_csv <- read_csv(file.path(datadir_raw, species_file))
 
+glimpse(species_csv)
 ```
 
 This data set is stored in a wide format where each specie has its own column. This means that every time we discover a new species we will have to add a column. In addition, a bunch of `0` are stored in this table but do not really provide any information. According to the metadata:
@@ -183,11 +185,20 @@ This data model is not convenient for a database, we will have to switch to a lo
 ### Data cleaning
 
 ```{r}
+species_long <- species_csv %>% 
+  pivot_longer(
+    cols = !c(Year, Site, Date, Num_observers, All_obs_reported, 
+              Observer_hours),
+    names_to = "species",
+    values_to = "species_count",
+    values_transform = list(species_count = as.character)
+  )
 
 ```
 
 
 ```{r}
+
 
 ```
 
@@ -195,18 +206,27 @@ We want to focus on the presence and absence of species and not the count. Let's
 
 ```{r}
 
+species_presence <- species_long %>% 
+  mutate(species_presence = ifelse(species_count == "0", 0, 1))
+
 ```
 
 We can remove some columns: "Num_observers", "All_obs_reported", "Observer_hours" are here to help to compute the effort of observation but since we just want presence and absence, we do not need it. We can also remove all the zeros values to reduce the size of our data set:
 
 ```{r}
 
+species_presence <- species_presence %>% 
+  select(-c(Num_observers, All_obs_reported, Observer_hours))
+
 ```
 
 Last but not least, let's have a look at our species list
 
 ```{r}
-
+species_presence %>% 
+  filter(species_presence == 1) %>% 
+  count(species) %>% 
+  arrange(desc(n))
 ```
 
 We have 319 species observed in this table. The "convention" seems to be that `_` are used to separate the different parts of a name. Note that it is not clear what type of nomenclature reference is used to pull those names from.
